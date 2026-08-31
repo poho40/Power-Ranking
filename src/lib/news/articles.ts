@@ -1,4 +1,4 @@
-import fs from "node:fs";import path from "node:path";import matter from "gray-matter";import { articleMetaSchema } from "./schema";import type { NewsArticle } from "./types";
+import fs from "node:fs";import path from "node:path";import matter from "gray-matter";import { articleMetaSchema } from "./schema";import { supabaseGeneratedArticleStore } from "./generated";import type { GeneratedNewsArticle,NewsArticle } from "./types";
 export const NEWS_DIRECTORY=path.join(process.cwd(),"content","news");
 export function isSafeNewsSlug(slug:string){return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)}
 export function parseNewsArticle(source:string,filename="article.md"):NewsArticle{const parsed=matter(source),meta=articleMetaSchema.safeParse(parsed.data);if(!meta.success)throw new Error(`Invalid news metadata in ${filename}: ${meta.error.issues.map(i=>`${i.path.join(".")}: ${i.message}`).join("; ")}`);return{...meta.data,body:parsed.content.trim()};}
@@ -7,3 +7,7 @@ export function loadNewsArticles(directory=NEWS_DIRECTORY){if(!fs.existsSync(dir
 export function getPublishedArticles(directory=NEWS_DIRECTORY){return loadNewsArticles(directory).filter(article=>article.status==="published")}
 export function getLatestPublishedArticle(directory=NEWS_DIRECTORY){return getPublishedArticles(directory)[0]}
 export function getNewsArticleBySlug(slug:string,{includeDrafts=false,directory=NEWS_DIRECTORY}:{includeDrafts?:boolean;directory?:string}={}){if(!isSafeNewsSlug(slug))return undefined;const article=loadNewsArticles(directory).find(item=>item.slug===slug);return article&&(article.status==="published"||includeDrafts)?article:undefined;}
+export async function getAllPublishedArticles(directory=NEWS_DIRECTORY):Promise<(NewsArticle|GeneratedNewsArticle)[]>{const manual=getPublishedArticles(directory),store=supabaseGeneratedArticleStore();if(!store)return manual;try{return sortNewsArticles([...manual,...await store.allPublished()])}catch{return manual}}
+export async function getLatestArticle(directory=NEWS_DIRECTORY){return(await getAllPublishedArticles(directory))[0]}
+export async function getArticleBySlug(slug:string,{includeDrafts=false,directory=NEWS_DIRECTORY}:{includeDrafts?:boolean;directory?:string}={}){if(!isSafeNewsSlug(slug))return undefined;const manual=getNewsArticleBySlug(slug,{includeDrafts,directory});if(manual)return manual;try{return await supabaseGeneratedArticleStore()?.bySlug(slug)??undefined}catch{return undefined}}
+export async function getArticleForSnapshot(snapshotId:number){try{return await supabaseGeneratedArticleStore()?.bySnapshot(snapshotId)??undefined}catch{return undefined}}

@@ -1,6 +1,10 @@
 export type ArticleStatus="draft"|"published";
 export interface NewsArticleMeta { title:string;slug:string;season:number;week?:number;snapshotType?:"preseason"|"regular";snapshotWeek?:number;publishedAt:string;summary:string;status:ArticleStatus;heroLabel?:string;author?:string;featuredTeamIds?:string[];tags?:string[] }
 export interface NewsArticle extends NewsArticleMeta { body:string }
+export type WeeklyMovementReason="SCORING_IMPROVED"|"SCORING_DECLINED"|"RECENT_FORM_SURGED"|"RECENT_FORM_FELL"|"EXPECTED_WINS_IMPROVED"|"EXPECTED_WINS_DECLINED"|"RECORD_IMPROVED"|"ROSTER_STRENGTH_IMPROVED"|"ROSTER_STRENGTH_DECLINED"|"SCHEDULE_STRENGTH_CHANGED"|"POWER_SCORE_SURGED"|"POWER_SCORE_DECLINED"|"OTHER_TEAMS_PASSED"|"HELD_POSITION";
+export interface WeeklyRankingArticleTeam {teamId:string;teamName:string;rank:number;previousRank:number|null;rankChange:number;powerScore:number;movementLabel:string;movementSymbol:string;reasonCodes:WeeklyMovementReason[];explanation:string}
+export interface WeeklyRankingArticleContent {intro:string;biggestRisers:WeeklyRankingArticleTeam[];biggestFallers:WeeklyRankingArticleTeam[];rankings:WeeklyRankingArticleTeam[];leagueSummary:string;lookingAhead:string}
+export interface GeneratedNewsArticle extends NewsArticleMeta {id:number;snapshotId:number;articleType:"weekly_power_rankings";body:"";generatedContent:WeeklyRankingArticleContent}
 export type StoryReasonCode="STRONG_RECENT_FORM"|"WEAK_RECENT_FORM"|"NEGATIVE_LUCK"|"POSITIVE_LUCK"|"HIGH_EXPECTED_WINS"|"LOW_EXPECTED_WINS"|"RANKING_RISER"|"RANKING_FALLER"|"ABOVE_AVERAGE_SCORING"|"BELOW_AVERAGE_SCORING"|"STRONG_ROSTER"|"STRONG_RECORD";
 export interface TeamStoryCandidate { teamId:string;teamName:string;powerRank:number;previousRank?:number;rankChange?:number;record:string;pointsPerGame:number;expectedWins:number;luck:number;recentFormScore:number;reasonCodes:StoryReasonCode[];signalScore:number }
 export interface MatchupStoryCandidate { week:number;homeTeamId:string;awayTeamId:string;homeTeamName:string;awayTeamName:string;homePowerRank:number;awayPowerRank:number;rankDistance:number }

@@ -129,3 +129,17 @@ Deploy to Vercel as a standard Next.js app. Add the same environment variables i
 - React escapes league and team text by default.
 
 This project is independent and is not affiliated with or endorsed by ESPN.
+
+## Automatic Tuesday publication
+
+No manual action is required each Tuesday. The workflow is:
+
+```text
+Vercel Cron → ESPN → ranking calculation → immutable Supabase snapshot
+            → snapshot-backed article generation → immutable Supabase article
+            → /rankings, /news, and the homepage update
+```
+
+Generated `weekly_power_rankings` articles use only the exact saved snapshot, are stored as structured JSON in `news_articles`, and coexist with manual Markdown articles in `content/news/`. If both snapshot and article exist, a retry returns `already_published`. If only the snapshot exists, the retry creates the missing article and returns `article_repaired` without recalculating or changing the snapshot.
+
+Inspect `ranking_snapshots` and `news_articles` in the Supabase Table Editor, joining on `snapshot_id`. Vercel Function logs for `/api/cron/publish-rankings` report only the status, week, snapshot ID, and article slug.

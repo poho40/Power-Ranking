@@ -2067,3 +2067,11 @@ npm run build      PASS (live ESPN mode, 10-minute revalidation)
 - Snapshot tests cover identity, Week 0 payload completeness, player/position detail, immutable duplicates, retrieval variants, rank movement, authorization, incomplete weeks, partial rejection, mapping, and storage failure.
 - Production does not fall back to live calculation when Supabase is missing or unavailable; mock/non-production and explicit `SNAPSHOT_DEV_FALLBACK` are the only fallback modes.
 - Final validation: 65 tests pass; lint, strict type checking, production build, `git diff --check`, and client-bundle secret scan pass.
+
+## Automatic Weekly Ranking Articles (2026-08-30)
+
+- [x] Tuesday publication creates an immutable regular ranking snapshot and then an immutable `weekly_power_rankings` article sourced exclusively from that saved snapshot.
+- [x] Every generated article contains every team exactly once, accessible movement arrows, biggest risers/fallers, frozen power scores, and deterministic explanations based on week-over-week component changes.
+- [x] Generated structured articles persist in Supabase and merge with repository-backed manual Markdown across `/news`, article routes, the homepage, and the snapshot-linked `/rankings` call to action.
+- [x] Unique snapshot/article identities prevent duplicates; retries return `already_published`, while a saved snapshot with a missing article is repaired as `article_repaired` without recalculation or snapshot mutation.
+- [x] Preseason remains excluded from automatic weekly generation and the manual Post-Draft Analysis remains supported.

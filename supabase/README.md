@@ -8,3 +8,5 @@
 6. Deploy. `vercel.json` calls the protected publication route Tuesdays at 17:00 UTC. Vercel sends `CRON_SECRET` as a bearer token.
 
 Inspect publication state in `ranking_snapshots`. Each complete parent must have one `team_ranking_snapshots` row per league team. Preseason releases additionally contain position and player detail rows. The `publish_ranking_snapshot` RPC is transactional, uniqueness-protected, restricted to `service_role`, and immutable-table triggers reject updates and deletes.
+
+Apply `004_generated_weekly_news.sql` after the snapshot migrations. Tuesday releases also create one immutable `news_articles` row linked by `snapshot_id`; inspect that table alongside `ranking_snapshots`. A cron retry repairs a missing article and never overwrites an existing snapshot or article.
