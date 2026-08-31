@@ -1,0 +1,15 @@
+import { describe, expect, it } from "vitest";
+import type { League, PowerRanking } from "@/lib/domain";
+import { buildStandingsRows, sortStandingsRows } from "@/lib/standings";
+
+const league = (completed = true): League => ({ id: "league", name: "League", season: 2026, currentWeek: completed ? 2 : 1, teams: [{ id: "1", name: "Alpha", wins: completed ? 1 : 0, losses: 0, ties: 0, pointsFor: completed ? 100 : 0, pointsAgainst: completed ? 90 : 0, roster: [] }, { id: "2", name: "Beta", wins: 0, losses: completed ? 1 : 0, ties: 0, pointsFor: completed ? 90 : 0, pointsAgainst: completed ? 100 : 0, roster: [] }], matchups: [{ week: 1, homeTeamId: "1", awayTeamId: "2", homeScore: completed ? 100 : 0, awayScore: completed ? 90 : 0, completed }] });
+const ranking = (teamId: string, rank: number, expectedWins: number): PowerRanking => ({ teamId, rank, powerScore: 60, components: { scoring: 50, recentForm: 50, record: 50, expectedWins: 50, roster: 50, schedule: 50 }, pointsPerGame: 100, expectedWins, expectedWinPct: expectedWins, luck: rank === 1 ? 0.25 : -0.25, explanation: "" });
+
+describe("standings analytics join", () => {
+  it("joins full regular-season analytics", () => { const rows = buildStandingsRows(league(), [ranking("1", 1, 0.75), ranking("2", 2, 0.25)]); expect(rows.map(({ id, expectedWins, regularSeasonPowerRank }) => ({ id, expectedWins, regularSeasonPowerRank }))).toEqual([{ id: "1", expectedWins: 0.75, regularSeasonPowerRank: 1 }, { id: "2", expectedWins: 0.25, regularSeasonPowerRank: 2 }]); });
+  it("represents preseason analytics as unavailable even if fallback rankings exist", () => { const rows = buildStandingsRows(league(false), [ranking("1", 1, 0), ranking("2", 2, 0)]); expect(rows.every((row) => row.expectedWins === null && row.luck === null && row.regularSeasonPowerRank === null)).toBe(true); });
+  it("preserves a team row when its analytics record is missing", () => { const rows = buildStandingsRows(league(), [ranking("1", 1, 0.75)]); expect(rows).toHaveLength(2); expect(rows.find((row) => row.id === "2")).toMatchObject({ expectedWins: null, luck: null, regularSeasonPowerRank: null }); });
+  it("normalizes numeric and string team IDs at the join boundary", () => { const numericRuntimeId = { ...ranking("1", 1, 0.75), teamId: 1 as unknown as string }; expect(buildStandingsRows(league(), [numericRuntimeId])[0].expectedWins).toBe(0.75); });
+  it("sorts null expected wins last in either direction and breaks ties deterministically", () => { const rows = buildStandingsRows(league(), [ranking("1", 1, 0.75)]); expect(sortStandingsRows(rows, "expectedWins", true).map((row) => row.id)).toEqual(["1", "2"]); expect(sortStandingsRows(rows, "expectedWins", false).map((row) => row.id)).toEqual(["1", "2"]); });
+  it("supports a preseason snapshot with no regular-season ranking records", () => { const rows = buildStandingsRows(league(false), []); expect(rows.map((row) => row.name)).toEqual(["Alpha", "Beta"]); expect(sortStandingsRows(rows, "expectedWins", true).map((row) => row.name)).toEqual(["Alpha", "Beta"]); });
+});

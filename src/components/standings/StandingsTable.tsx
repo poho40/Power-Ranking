@@ -1,4 +1,17 @@
-"use client";import { useMemo,useState } from "react";import Link from "next/link";import type { League,PowerRanking } from "@/lib/domain";
-type Key="name"|"wins"|"pct"|"pointsFor"|"pointsAgainst"|"diff"|"expected"|"luck"|"rank";
-const headers:[Key,string][]=[["name","Team"],["wins","Record"],["pct","Win %"],["pointsFor","PF"],["pointsAgainst","PA"],["diff","Diff"],["expected","xWins"],["luck","Luck"],["rank","Power"]];
-export function StandingsTable({league,rankings}:{league:League;rankings:PowerRanking[]}){const [key,setKey]=useState<Key>("wins"),[desc,setDesc]=useState(true);const rows=useMemo(()=>league.teams.map(t=>{const r=rankings.find(x=>x.teamId===t.id)!;const games=t.wins+t.losses+t.ties;return{...t,pct:games?(t.wins+.5*t.ties)/games:0,diff:t.pointsFor-t.pointsAgainst,expected:r.expectedWins,luck:r.luck,rank:r.rank}}).sort((a,b)=>{const av=a[key],bv=b[key];const n=typeof av==="string"?av.localeCompare(String(bv)):Number(av)-Number(bv);return desc?-n:n}),[league,rankings,key,desc]);const sort=(k:Key)=>{if(k===key)setDesc(!desc);else{setKey(k);setDesc(true)}};return <div className="panel table-wrap"><table className="data-table"><thead><tr>{headers.map(([k,label])=><th key={k}><button onClick={()=>sort(k)} aria-label={`Sort by ${label}`} style={{all:"unset",cursor:"pointer"}}>{label} {key===k?(desc?"↓":"↑"):""}</button></th>)}</tr></thead><tbody>{rows.map(t=><tr key={t.id}><td><Link className="link" href={`/teams/${t.id}`}><strong>{t.name}</strong></Link></td><td>{t.wins}–{t.losses}{t.ties?`–${t.ties}`:""}</td><td>{(t.pct*100).toFixed(1)}%</td><td>{t.pointsFor.toFixed(1)}</td><td>{t.pointsAgainst.toFixed(1)}</td><td>{t.diff>0?"+":""}{t.diff.toFixed(1)}</td><td>{t.expected.toFixed(1)}</td><td style={{color:t.luck>0?"var(--amber)":"var(--accent)"}}>{t.luck>0?"+":""}{t.luck.toFixed(1)}</td><td>#{t.rank}</td></tr>)}</tbody></table></div>}
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import type { League, PowerRanking } from "@/lib/domain";
+import { buildStandingsRows, sortStandingsRows, type StandingsSortKey } from "@/lib/standings";
+
+const headers: [StandingsSortKey, string][] = [["name", "Team"], ["wins", "Record"], ["pct", "Win %"], ["pointsFor", "PF"], ["pointsAgainst", "PA"], ["diff", "+/−"], ["expectedWins", "Expected W"], ["luck", "Luck"], ["regularSeasonPowerRank", "Power"]];
+const decimal = (value: number | null) => value == null ? "—" : value.toFixed(1);
+const signedDecimal = (value: number | null) => value == null ? "—" : `${value > 0 ? "+" : ""}${value.toFixed(1)}`;
+
+export function StandingsTable({ league, rankings }: { league: League; rankings: PowerRanking[] }) {
+  const [key, setKey] = useState<StandingsSortKey>("wins"), [descending, setDescending] = useState(true);
+  const rows = useMemo(() => sortStandingsRows(buildStandingsRows(league, rankings), key, descending), [league, rankings, key, descending]);
+  const sort = (nextKey: StandingsSortKey) => { if (nextKey === key) setDescending((value) => !value); else { setKey(nextKey); setDescending(true); } };
+  return <div className="panel table-wrap"><table className="data-table"><thead><tr>{headers.map(([headerKey, label]) => <th key={headerKey}><button onClick={() => sort(headerKey)} aria-label={`Sort by ${label}`} style={{ all: "unset", cursor: "pointer" }}>{label} {key === headerKey ? (descending ? "↓" : "↑") : ""}</button></th>)}</tr></thead><tbody>{rows.map((team) => <tr key={team.id}><td><Link className="link" href={`/teams/${team.id}`}><strong>{team.name}</strong></Link></td><td>{team.wins}–{team.losses}{team.ties ? `–${team.ties}` : ""}</td><td>{(team.pct * 100).toFixed(1)}%</td><td>{team.pointsFor.toFixed(1)}</td><td>{team.pointsAgainst.toFixed(1)}</td><td>{team.diff > 0 ? "+" : ""}{team.diff.toFixed(1)}</td><td>{decimal(team.expectedWins)}</td><td style={{ color: team.luck == null ? undefined : team.luck > 0 ? "var(--amber)" : "var(--accent)" }}>{signedDecimal(team.luck)}</td><td>{team.regularSeasonPowerRank == null ? "—" : `#${team.regularSeasonPowerRank}`}</td></tr>)}</tbody></table></div>;
+}
