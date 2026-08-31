@@ -10,3 +10,5 @@
 Inspect publication state in `ranking_snapshots`. Each complete parent must have one `team_ranking_snapshots` row per league team. Preseason releases additionally contain position and player detail rows. The `publish_ranking_snapshot` RPC is transactional, uniqueness-protected, restricted to `service_role`, and immutable-table triggers reject updates and deletes.
 
 Apply `004_generated_weekly_news.sql` after the snapshot migrations. Tuesday releases also create one immutable `news_articles` row linked by `snapshot_id`; inspect that table alongside `ranking_snapshots`. A cron retry repairs a missing article and never overwrites an existing snapshot or article.
+
+Apply `005_integration_health.sql` to persist ESPN connection and publication health across deployments. The table stores only safe status categories and timestamps—never ESPN cookies or authorization values.

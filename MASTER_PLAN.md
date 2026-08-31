@@ -2075,3 +2075,12 @@ npm run build      PASS (live ESPN mode, 10-minute revalidation)
 - [x] Generated structured articles persist in Supabase and merge with repository-backed manual Markdown across `/news`, article routes, the homepage, and the snapshot-linked `/rankings` call to action.
 - [x] Unique snapshot/article identities prevent duplicates; retries return `already_published`, while a saved snapshot with a missing article is repaired as `article_repaired` without recalculation or snapshot mutation.
 - [x] Preseason remains excluded from automatic weekly generation and the manual Post-Draft Analysis remains supported.
+
+## ESPN Authentication Health and Publication Safety (2026-08-30)
+
+- [x] ESPN cookies are reused until ESPN rejects them; weekly manual reauthentication is not expected.
+- [x] Typed authentication detection covers 401/403, login redirects/pages, while network, rate-limit, service, configuration, not-found, and malformed-response failures remain distinct.
+- [x] Authentication or partial-data validation failures occur before all snapshot/article writes and preserve the previous published release.
+- [x] Persistent Supabase integration health records safe connection status, fetch timestamps, failures, and successful publications without storing secrets.
+- [x] `/status` exposes only public-safe operational state; protected `npm run check:espn` verifies connectivity without publication.
+- [x] Protected `npm run publish:latest` reuses the Tuesday pipeline for immediate recovery after credentials are fixed.

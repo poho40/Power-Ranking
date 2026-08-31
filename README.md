@@ -143,3 +143,17 @@ Vercel Cron → ESPN → ranking calculation → immutable Supabase snapshot
 Generated `weekly_power_rankings` articles use only the exact saved snapshot, are stored as structured JSON in `news_articles`, and coexist with manual Markdown articles in `content/news/`. If both snapshot and article exist, a retry returns `already_published`. If only the snapshot exists, the retry creates the missing article and returns `article_repaired` without recalculating or changing the snapshot.
 
 Inspect `ranking_snapshots` and `news_articles` in the Supabase Table Editor, joining on `snapshot_id`. Vercel Function logs for `/api/cron/publish-rankings` report only the status, week, snapshot ID, and article slug.
+
+## ESPN Authentication Maintenance
+
+`ESPN_S2` and `ESPN_SWID` remain server-only Vercel environment variables and are reused automatically until ESPN rejects the session; weekly credential refreshes are not expected. `/status` shows a public-safe connection state, last successful ESPN sync, last failure, current published week, and last successful ranking publication.
+
+If the status changes to **Authentication Required**:
+
+1. Sign in to ESPN and retrieve a current `espn_s2` cookie.
+2. Update `ESPN_S2` in Vercel without exposing it in source or logs.
+3. Redeploy or restart the production environment if needed.
+4. Run `npm run check:espn` against the protected admin endpoint.
+5. If Tuesday was missed, run `npm run publish:latest` to use the same fail-safe pipeline immediately.
+
+Both commands use `PUBLISH_BASE_URL` and `CRON_SECRET`. The connectivity check never publishes. Authentication, network, malformed-response, or partial-data failures abort before snapshot/article writes and preserve the prior release.
