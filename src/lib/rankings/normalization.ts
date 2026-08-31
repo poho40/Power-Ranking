@@ -1,0 +1,3 @@
+export const clamp = (value: number, min=0, max=100) => Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : (min+max)/2;
+export function normalizeMinMax(values: number[]): number[] { if (!values.length) return []; const safe=values.map(v=>Number.isFinite(v)?v:0); const min=Math.min(...safe), max=Math.max(...safe); return max===min ? safe.map(()=>50) : safe.map(v=>clamp((v-min)/(max-min)*100)); }
+export function normalizeZScore(values: number[]): number[] { if(!values.length)return[]; const safe=values.map(v=>Number.isFinite(v)?v:0), mean=safe.reduce((a,b)=>a+b,0)/safe.length; const sd=Math.sqrt(safe.reduce((s,v)=>s+(v-mean)**2,0)/safe.length); return sd===0?safe.map(()=>50):safe.map(v=>clamp(50+((v-mean)/sd)*15)); }

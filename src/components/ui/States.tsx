@@ -1,0 +1,4 @@
+import { Card } from "./Card";
+export function EmptyState({title="Nothing to show",message="Data will appear here when it becomes available."}:{title?:string;message?:string}){return <Card><div style={{padding:32,textAlign:"center"}}><h2>{title}</h2><p className="muted">{message}</p></div></Card>}
+export function ErrorState({message}:{message:string}){return <Card><div role="alert" style={{padding:32,borderLeft:"3px solid var(--red)"}}><div className="eyebrow" style={{color:"var(--red)"}}>Data unavailable</div><h2>We couldn’t load the league</h2><p className="muted">{message}</p></div></Card>}
+export function LoadingSkeleton(){return <div aria-label="Loading league data" style={{display:"grid",gap:14}}>{[1,2,3].map(i=><div key={i} className="panel" style={{height:96,opacity:1-i*.18,animation:"pulse 1.5s infinite"}} />)}</div>}

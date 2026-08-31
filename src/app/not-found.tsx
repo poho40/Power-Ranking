@@ -1,0 +1,1 @@
+import { EmptyState } from "@/components/ui/States";export default function NotFound(){return <div style={{paddingTop:60}}><EmptyState title="Team not found" message="This team is not part of the current league."/></div>}

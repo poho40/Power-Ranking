@@ -1,0 +1,2 @@
+import { NextResponse } from "next/server";import { getLeague } from "@/lib/data/getLeague";import { calculatePreseasonRankings } from "@/lib/preseason";
+export async function GET(){const result=await getLeague();if(!result.league)return NextResponse.json(result,{status:503});return NextResponse.json({...result,preseason:calculatePreseasonRankings(result.league)},{headers:{"Cache-Control":"public, s-maxage=600, stale-while-revalidate=60"}})}

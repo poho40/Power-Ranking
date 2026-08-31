@@ -1,0 +1,100 @@
+# Powerhouse Fantasy Power Rankings
+
+A production-ready Next.js dashboard that turns ESPN Fantasy Football league data into deterministic, explainable power rankings. It includes standings, weekly matchups, team analytics, charts, all-play expected wins, matchup-luck analysis, and an idempotent Supabase snapshot design.
+
+It also includes a permanent preseason roster-ranking system at `/preseason`. Before completed games exist, the homepage features preseason rankings; regular-season performance rankings take over after the first final matchup without removing the preseason baseline.
+
+## Stack
+
+- Next.js App Router, React, TypeScript (strict), Tailwind CSS
+- Recharts for responsive charts
+- Zod validation at the ESPN boundary
+- Vitest for ranking and analytics unit tests
+- Optional Supabase PostgreSQL history
+
+## Local setup
+
+```bash
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+The default `DATA_SOURCE=mock` needs no account or credentials. It serves a deterministic ten-team, six-week league designed to demonstrate scoring differences, luck, form, movement, roster depth, and schedule strength.
+
+Useful checks:
+
+```bash
+npm test
+npm run typecheck
+npm run lint
+npm run build
+```
+
+## Live ESPN data
+
+Set these server environment variables:
+
+```env
+DATA_SOURCE=espn
+ESPN_LEAGUE_ID=123456
+ESPN_SEASON=2026
+ESPN_S2=
+ESPN_SWID=
+```
+
+Public leagues need only the league ID and season. Private leagues also need the `espn_s2` and `SWID` cookie values from an authenticated ESPN browser session. Do not add quotes unless they are part of the value. These values are read only by modules marked `server-only`, never use a `NEXT_PUBLIC_` prefix, and are never returned or logged. ESPN's Fantasy API is unofficial; endpoint construction, validation, and raw parsing are isolated under `src/lib/espn`.
+
+`DATA_SOURCE=espn` deliberately returns a useful error screen when configuration, authentication, upstream availability, or response validation fails. Switch back to `mock` at any time.
+
+## Ranking methodology
+
+Every component is normalized from 0–100 within the league, then combined as follows:
+
+- 30% points-per-game scoring strength
+- 20% last-three-week scoring form (50/30/20 recency weighting)
+- 15% actual record
+- 15% all-play expected wins
+- 10% roster strength (80% starters, 20% bench)
+- 10% opponent scoring strength
+
+Expected wins compare each weekly score with every other league score; ties earn half-credit. Luck is actual wins plus half of ties minus expected wins. Equal power scores break by points per game, expected wins, record, then team name. All calculations are clamped, finite, and deterministic.
+
+### Preseason methodology
+
+Preseason rankings are independent from wins and weekly performance. The engine:
+
+- optimizes each roster against its actual ESPN starter, FLEX, SUPERFLEX, kicker, and defense configuration;
+- uses the current ESPN weekly projection, falling back to season projection average and then zero;
+- derives position-specific replacement levels from league size and optimized starter demand;
+- values players by projected points above replacement;
+- combines top-end starter value with diminishing useful-depth value;
+- scores FLEX only from players assigned to FLEX-like slots in the unique optimized lineup;
+- normalizes each applicable group to 0–100 and combines group scores with league-aware weights totaling 100%.
+
+Kicker and defense groups disappear automatically in leagues that do not use them. Multiple FLEX, 2-QB, SUPERFLEX, and hybrid ESPN eligibility are supported.
+
+## Historical snapshots
+
+Apply [`supabase/migrations/001_ranking_snapshots.sql`](supabase/migrations/001_ranking_snapshots.sql) and [`supabase/migrations/002_preseason_snapshots.sql`](supabase/migrations/002_preseason_snapshots.sql), then configure:
+
+```env
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+The service-role key is server-only. `persistRankingSnapshot` upserts weekly snapshots on `(league_id, season, week)`. `persistPreseasonSnapshot` creates one immutable baseline per `(league_id, season)` and will not overwrite an existing preseason snapshot. Without Supabase configuration, the app remains fully usable and persistence reports that it is disabled.
+
+## Deployment
+
+Deploy to Vercel as a standard Next.js app. Add the same environment variables in project settings, leave `DATA_SOURCE=mock` for the demo, or use `espn` for the live league. Never expose ESPN cookies or the Supabase service-role key to browser-visible variables. ESPN fetches use a ten-minute Next.js cache.
+
+## Security notes
+
+- ESPN cookies and Supabase service credentials live exclusively in server modules.
+- League IDs and seasons are validated; clients cannot provide arbitrary ESPN URLs.
+- Authentication values and full upstream payloads are not logged.
+- `.env*` is ignored while `.env.example` contains placeholders only.
+- React escapes league and team text by default.
+
+This project is independent and is not affiliated with or endorsed by ESPN.

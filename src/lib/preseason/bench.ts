@@ -1,0 +1,1 @@
+export function diminishingBenchValue(values:number[]){const decay=[1,.65,.4,.25,.15,.1,.05];return values.filter(Number.isFinite).map(v=>Math.max(0,v)).sort((a,b)=>b-a).reduce((sum,value,index)=>sum+value*(decay[index]??.03),0);}

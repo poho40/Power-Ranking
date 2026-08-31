@@ -1,0 +1,1 @@
+"use client";import { ErrorState } from "@/components/ui/States";export default function Error({error,reset}:{error:Error;reset:()=>void}){return <div style={{paddingTop:60}}><ErrorState message={error.message}/><button onClick={reset} style={{marginTop:16,padding:"10px 16px"}}>Try again</button></div>}

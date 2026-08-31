@@ -1,0 +1,3 @@
+import type { Metadata } from "next";import "./globals.css";import { Nav } from "@/components/layout/Nav";
+export const metadata:Metadata={title:{default:"Powerhouse Fantasy Rankings",template:"%s | Powerhouse"},description:"Explainable fantasy football power rankings and league analytics."};
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body><Nav/><main className="container" style={{minHeight:"calc(100vh - 150px)"}}>{children}</main><footer style={{borderTop:"1px solid var(--line)",marginTop:64,padding:"28px 0",color:"var(--muted)",fontSize:13}}><div className="container">Independent fantasy analytics. Not affiliated with ESPN.</div></footer></body></html>}
