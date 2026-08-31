@@ -1682,47 +1682,35 @@ Check bundle size.
 
 ## Task 37 — Supabase Setup
 
-Add database configuration.
-
-Create migration files.
-
-Do not hardcode credentials.
+- [x] Add server-only Supabase configuration, migration history, public-read RLS, and service-role-only transactional publication.
 
 ---
 
 ## Task 38 — Ranking Snapshots
 
-Persist weekly power ranking results.
-
-Enforce unique league/season/week snapshots.
-
-Ensure snapshot creation is idempotent.
+- [x] Persist immutable preseason and weekly ranking snapshots with unique `(league_id, season, week, snapshot_type)` identity.
+- [x] Freeze complete team, component, position, player/VOR, lineup, explanation, and display data atomically; duplicate publication returns the original snapshot unchanged.
 
 ---
 
 ## Task 39 — Ranking Movement
 
-Compare current rank to previous snapshot.
-
-Calculate:
-
-```text
-rankChange
-```
+- [x] Calculate `previous_rank` and `rank_change` from the previous published snapshot, using Week 0 preseason as the Week 1 baseline when present.
 
 ---
 
 ## Task 40 — Ranking History
 
-Display team ranking over time.
+- [x] Read latest, preseason, specific-week, previous, and full-season snapshots and drive ranking history from published rows.
 
-Chart:
+### Published ranking model
 
-```text
-Week → Ranking
-```
-
-Invert vertical axis so rank 1 appears at the top.
+- ESPN remains the live input for intentional publication and for live rosters, standings, scores, and upcoming matchups.
+- Supabase is the public ranking store. Homepage rankings, `/rankings`, `/preseason`, team preseason profiles, movement, history, and ranking-based editorial analytics read frozen published snapshots.
+- Post-draft preseason is immutable Week 0 with type `preseason` and label `Post-Draft Preseason Rankings`.
+- A protected Tuesday cron publishes only the latest fully completed fantasy week. Incomplete weeks and duplicate invocations are harmless no-ops.
+- Published rows cannot be updated or deleted. Live ESPN changes between releases cannot alter the public ranking snapshot.
+- Production shows an error when a snapshot is missing; only mock mode, non-production, or explicit `SNAPSHOT_DEV_FALLBACK=true` may calculate a local fallback.
 
 ---
 
@@ -2069,3 +2057,13 @@ npm run build      PASS (live ESPN mode, 10-minute revalidation)
 - The homepage reads only the latest published article and hides the section when none exists.
 - The production build succeeds with ESPN configuration deliberately unavailable, so static news content remains deployable during an ESPN outage.
 - Final validation: 43 tests pass; lint, strict type checking, and the production build pass.
+
+## Immutable Snapshot Publication Validation (2026-08-30)
+
+- Added migration `003_immutable_published_snapshots.sql` with unified preseason/regular identity, explicit frozen team/position/player fields, JSON display models, public-read RLS, service-role-only RPC access, immutable triggers, and atomic complete-team publication.
+- Public homepage rankings, `/rankings`, `/preseason`, team preseason profiles, ranking movement/history, ranking APIs, and editorial analytics now read published Supabase snapshots. Live ESPN changes cannot mutate a published result.
+- Added protected preseason and Tuesday weekly publication endpoints, a safe `npm run publish:preseason` command, and a 17:00 UTC Tuesday Vercel cron schedule.
+- Duplicate, concurrent, incomplete-week, and partial-team publication paths are safe: identity conflicts return the existing snapshot, incomplete weeks publish nothing, and transactional failures roll back all rows.
+- Snapshot tests cover identity, Week 0 payload completeness, player/position detail, immutable duplicates, retrieval variants, rank movement, authorization, incomplete weeks, partial rejection, mapping, and storage failure.
+- Production does not fall back to live calculation when Supabase is missing or unavailable; mock/non-production and explicit `SNAPSHOT_DEV_FALLBACK` are the only fallback modes.
+- Final validation: 65 tests pass; lint, strict type checking, production build, `git diff --check`, and client-bundle secret scan pass.

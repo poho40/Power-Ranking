@@ -10,7 +10,7 @@ It also includes a permanent preseason roster-ranking system at `/preseason`. Be
 - Recharts for responsive charts
 - Zod validation at the ESPN boundary
 - Vitest for ranking and analytics unit tests
-- Optional Supabase PostgreSQL history
+- Supabase PostgreSQL for immutable published rankings
 
 ## Local setup
 
@@ -74,16 +74,30 @@ Preseason rankings are independent from wins and weekly performance. The engine:
 
 Kicker and defense groups disappear automatically in leagues that do not use them. Multiple FLEX, 2-QB, SUPERFLEX, and hybrid ESPN eligibility are supported.
 
-## Historical snapshots
+## Immutable published ranking snapshots
 
-Apply [`supabase/migrations/001_ranking_snapshots.sql`](supabase/migrations/001_ranking_snapshots.sql) and [`supabase/migrations/002_preseason_snapshots.sql`](supabase/migrations/002_preseason_snapshots.sql), then configure:
+ESPN is ranking input, not the public ranking store. A trusted publication job calculates rankings once, freezes the complete display model in Supabase, and public ranking pages read that snapshot until another is intentionally published. Current rosters, standings, scores, and upcoming matchups remain live ESPN data.
+
+Create a Supabase project, open its SQL editor, and apply the migrations in numeric order from `supabase/migrations/` (including `003_immutable_published_snapshots.sql`). Configure the app and Vercel with:
 
 ```env
-SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
+CRON_SECRET=
 ```
 
-The service-role key is server-only. `persistRankingSnapshot` upserts weekly snapshots on `(league_id, season, week)`. `persistPreseasonSnapshot` creates one immutable baseline per `(league_id, season)` and will not overwrite an existing preseason snapshot. Without Supabase configuration, the app remains fully usable and persistence reports that it is disabled.
+The service-role key and cron secret are server-only. Public RLS policies permit reads of published rows; writes require the service role. Database triggers reject updates/deletes, the identity constraint is `(league_id, season, week, snapshot_type)`, and the publication RPC inserts parent/team/position/player rows in one transaction. A duplicate call returns the existing snapshot without changing it.
+
+To freeze the current post-draft board as Week 0, start the app locally and run:
+
+```bash
+npm run dev
+npm run publish:preseason
+```
+
+The command calls the protected local publication endpoint and refuses to overwrite an existing preseason snapshot. `vercel.json` schedules `/api/cron/publish-rankings` for 17:00 UTC every Tuesday (Tuesday morning Pacific). The endpoint independently verifies authorization, finds the latest fully completed fantasy week, skips incomplete or already-published weeks, calculates movement from the previous published snapshot, and creates one immutable regular-season release.
+
+Inspect snapshots in the Supabase Table Editor (`ranking_snapshots`, `team_ranking_snapshots`, `preseason_position_snapshots`, and `preseason_player_snapshots`) or query by league, season, week, and type. For explicit local development without Supabase, use `DATA_SOURCE=mock` or set `SNAPSHOT_DEV_FALLBACK=true`. Production never silently falls back to live recalculation.
 
 ## Publishing weekly league news
 

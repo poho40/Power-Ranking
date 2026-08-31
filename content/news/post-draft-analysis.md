@@ -2,6 +2,8 @@
 title: "Post-Draft Analysis"
 slug: "post-draft-analysis"
 season: 2026
+snapshotType: "preseason"
+snapshotWeek: 0
 publishedAt: "2026-08-30"
 summary: "The draft room has closed. Here is who built a contender, who drafted a house of cards, and who should already be working the waiver wire."
 status: "published"
