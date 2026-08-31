@@ -216,8 +216,10 @@ interface Player {
   position: string;
   proTeam?: string;
 
-  fantasyPoints?: number;
-  projectedPoints?: number;
+  seasonProjectedPoints?: number;
+  seasonActualPoints?: number;
+  weeklyProjectedPoints?: number;
+  weeklyActualPoints?: number;
 
   slot?: string;
 }
@@ -1218,11 +1220,11 @@ Preseason rankings are a permanent roster-quality baseline and remain independen
 ## Task P1 — Preseason Types and ESPN Player Metadata
 
 - [x] Add explicit preseason ranking, position-group, contribution, lineup, replacement-level, weight, and award types.
-- [x] Parse ESPN eligible slots, NFL team, starter state, and projection source into internal player models without leaking raw ESPN objects.
+- [x] Parse ESPN eligible slots, NFL team, starter state, and explicit season/weekly actual/projected totals into internal player models without leaking raw ESPN objects.
 
 ## Task P2 — Player Valuation and Replacement Level
 
-- [x] Implement safe projected player valuation with weekly projection, season-average projection, and zero-value fallback behavior.
+- [x] Implement safe preseason player valuation using only ESPN's full-season projected total, with a zero-value fallback for missing or invalid totals.
 - [x] Calculate value over replacement dynamically from league size, required starters, and actual FLEX/SUPERFLEX demand.
 
 ## Task P3 — Projected Lineup Optimizer
@@ -2014,9 +2016,9 @@ npm audit          PASS (0 vulnerabilities after Next.js 16 upgrade)
 - [x] Parsed the configured league as **Fantastic Folk**, season 2026, current matchup period 1.
 - [x] Parsed all 10 teams, 70 scheduled matchups, team records, and 16-player rosters without duplicates or missing teams.
 - [x] Confirmed the league-configured slots: QB 1, RB 2, WR 2, TE 1, FLEX 1, D/ST 1, K 1, bench 7, and IR 1. Active roster entries map to the configured starter and bench slots.
-- [x] Updated ESPN projection parsing to use `player.stats` entries identified by season, scoring period, stat source, and split type. ESPN `ratings.totalRating` is ranking metadata and is no longer incorrectly treated as fantasy points.
+- [x] Updated ESPN stat parsing to expose separate season/weekly actual/projected fields selected by season, scoring period, stat source, and split type. Preseason value uses the full-season `appliedTotal`; ESPN `ratings.totalRating`, weekly projections, and season averages are not preseason inputs.
 - [x] Matchups are complete only when ESPN returns `HOME`, `AWAY`, or `TIE`; `UNDECIDED` current and future matchups remain incomplete.
-- [x] Generated 10 unique real-league preseason rankings with sequential ranks, finite normalized components, no NaN/Infinity values, no missing teams, and a 45.0–55.0 power-score range.
+- [x] Generated 10 unique real-league preseason rankings with sequential ranks, finite normalized components, no NaN/Infinity values, no missing teams, and a 21.7–50.4 full-season roster-score range.
 - [x] Verified HTTP 200 rendering with live data for `/`, `/rankings`, `/standings`, `/matchups`, `/teams`, and `/teams/1`.
 - [x] Verified the ESPN cookie values do not occur in generated client assets and `.env.local` is explicitly ignored.
 - [x] Added live-response regression tests for response validation, projections, configured slots, and matchup completion.
@@ -2034,14 +2036,14 @@ npm run build      PASS (live ESPN mode, 10-minute revalidation)
 
 ## Preseason Feature Validation (2026-08-30)
 
-- Live ESPN roster: 10 teams, 160 players, and 160 current-week projections parsed successfully.
+- Live ESPN roster: 10 teams, 160 players, 160 full-season projections, and 160 current-week projections parsed successfully as separate fields.
 - Applicable live groups: QB, RB, WR, TE, FLEX, Bench, K, and D/ST; every group contains 10 unique teams.
 - Live effective weights: QB 15%, RB 25%, WR 25%, TE 12%, FLEX 13%, Bench 5%, K 2%, D/ST 3%; total 100%.
 - Every optimized lineup contains unique players and respects the configured 1 QB, 2 RB, 2 WR, 1 TE, 1 FLEX, 1 K, and 1 D/ST starters.
-- All overall, group, starter, depth, player-value, and replacement-level numbers are finite.
+- All overall, group, starter, depth, full-season player-value, and replacement-level numbers are finite. Live full-season samples were verified at QB, RB, WR, and TE; changing weekly projections is regression-tested not to alter preseason rankings.
 - `/`, `/preseason`, `/methodology`, and `/teams/1` render HTTP 200 with live preseason data.
 - Desktop tables use contained horizontal scrolling; position sections collapse to a two-column mobile card layout.
-- Final validation: 29 tests pass; lint, strict type checking, and the live-data production build pass.
+- Full-season projection correction validation: 41 tests pass; lint, strict type checking, and the live-data production build pass. Live rankings contain 10 unique teams with sequential ranks, legal unique-player lineups, finite values, and a 21.7–50.4 score range.
 
 ## News Feature Validation (2026-08-30)
 

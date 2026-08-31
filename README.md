@@ -65,7 +65,7 @@ Expected wins compare each weekly score with every other league score; ties earn
 Preseason rankings are independent from wins and weekly performance. The engine:
 
 - optimizes each roster against its actual ESPN starter, FLEX, SUPERFLEX, kicker, and defense configuration;
-- uses the current ESPN weekly projection, falling back to season projection average and then zero;
+- uses ESPN's full-season projected fantasy-point total, falling back only to zero when that total is absent or invalid;
 - derives position-specific replacement levels from league size and optimized starter demand;
 - values players by projected points above replacement;
 - combines top-end starter value with diminishing useful-depth value;
