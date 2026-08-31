@@ -1,0 +1,2 @@
+import { NextResponse } from "next/server";import { getDashboard } from "@/lib/data/getDashboard";import { generateWeeklyEditorialBrief } from "@/lib/news";
+export async function GET(){if(process.env.NODE_ENV==="production")return NextResponse.json({error:"Not found"},{status:404});const {league,rankings,error}=await getDashboard();if(error||!league)return NextResponse.json({error:error??"League unavailable"},{status:503});return NextResponse.json(generateWeeklyEditorialBrief(league,rankings),{headers:{"Cache-Control":"private, no-store"}})}

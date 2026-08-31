@@ -1503,6 +1503,43 @@ Include weights and expected-win methodology.
 
 ---
 
+# Phase 5.5 — News / Weekly Editorial
+
+Editorial content is a separate repository-backed publishing system. It may cite objective analytics but can never modify ranking inputs or calculations.
+
+## Task N1 — Content Architecture and Metadata
+
+- [x] Add isolated Markdown article types, strict Zod frontmatter validation, and repository-backed loading from `content/news/`.
+- [x] Support title, slug, season, week, published date, summary, draft/published status, hero label, author, featured teams, and tags.
+- [x] Validate safe hyphenated slugs and prevent arbitrary filesystem resolution.
+
+## Task N2 — Publishing Workflow
+
+- [x] Filter public content to published articles and allow draft article preview only outside production.
+- [x] Sort by season descending, week descending, publication date descending, then slug.
+- [x] Add a realistic draft Week 1 report and reusable weekly report template without auto-publishing commentary.
+
+## Task N3 — Editorial Analytics Brief
+
+- [x] Generate deterministic high-on, low-on, fraud-watch, buy-low, sell-high, biggest-riser, biggest-faller, and matchup candidates from existing analytics.
+- [x] Include factual team context and centralized reason codes without generating or publishing editorial prose.
+- [x] Add a development-only, no-store `/api/editorial-brief` route that returns 404 in production.
+
+## Task N4 — News Product Experience
+
+- [x] Add `/news` with a sports-desk index, published article cards, dates, summaries, tags, and empty state.
+- [x] Add statically generated `/news/[slug]` pages with metadata, canonical paths, Open Graph article fields, draft protection, and readable Markdown typography.
+- [x] Add News to desktop/mobile navigation and show the latest published report on the homepage.
+- [x] Ensure previously published text does not require ESPN availability to render.
+
+## Task N5 — Testing and Documentation
+
+- [x] Test metadata parsing, draft/published filtering, sorting, slug lookup and rejection, every editorial heuristic, movement, deterministic output, and finite numeric context.
+- [x] Document the manual draft-review-publish-deploy workflow and editorial-brief data source in README.
+- [x] Validate production draft 404 behavior, published-content behavior through fixtures, responsive article styling, client-secret isolation, lint, types, tests, and production build.
+
+---
+
 # Phase 6 — ESPN Integration
 
 ## Task 26 — ESPN Client
@@ -2005,3 +2042,14 @@ npm run build      PASS (live ESPN mode, 10-minute revalidation)
 - `/`, `/preseason`, `/methodology`, and `/teams/1` render HTTP 200 with live preseason data.
 - Desktop tables use contained horizontal scrolling; position sections collapse to a two-column mobile card layout.
 - Final validation: 29 tests pass; lint, strict type checking, and the live-data production build pass.
+
+## News Feature Validation (2026-08-30)
+
+- Repository-backed Markdown loader validates strict frontmatter and safe slugs without requiring ESPN or a database.
+- Public content includes only `published` articles; the included Week 1 report remains a manual-review draft.
+- Production checks: `/news` returns 200, the draft article route returns 404, and `/api/editorial-brief` returns 404.
+- Published article ordering and lookup are verified with deterministic test fixtures.
+- Editorial candidates use power ranking, movement, scoring, expected wins, luck, recent form, record, and scheduled matchup data; no team names are hardcoded.
+- The homepage reads only the latest published article and hides the section when none exists.
+- The production build succeeds with ESPN configuration deliberately unavailable, so static news content remains deployable during an ESPN outage.
+- Final validation: 38 tests pass; lint, strict type checking, and the production build pass.

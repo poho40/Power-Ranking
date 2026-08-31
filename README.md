@@ -85,6 +85,23 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 The service-role key is server-only. `persistRankingSnapshot` upserts weekly snapshots on `(league_id, season, week)`. `persistPreseasonSnapshot` creates one immutable baseline per `(league_id, season)` and will not overwrite an existing preseason snapshot. Without Supabase configuration, the app remains fully usable and persistence reports that it is disabled.
 
+## Publishing weekly league news
+
+Articles live in `content/news/` as Markdown with validated frontmatter. To publish a weekly report:
+
+1. Copy `content/templates/weekly-power-report.md` into `content/news/`.
+2. Give it a descriptive filename such as `2026-week-4.md`.
+3. Fill in `title`, safe hyphenated `slug`, `season`, `week`, `publishedAt`, and `summary`.
+4. Write and edit the Markdown article.
+5. Keep `status: "draft"` while reviewing. Drafts never appear on the production news index, homepage, or public article routes.
+6. Change the status to `published` when the article is ready.
+7. Commit and push the article.
+8. Vercel builds and publishes it automatically.
+
+Published articles are sorted by season, week, then publication date. The latest published report automatically appears on the homepage. Article text is repository-backed and renders even if ESPN is temporarily unavailable.
+
+The deterministic editorial candidate system in `src/lib/news/editorialBrief.ts` reads current power rankings, movement, scoring, expected wins, luck, recent form, records, and upcoming matchups. It returns factual candidates and reason codes for high-on, low-on, fraud-watch, buy-low, sell-high, riser, faller, and matchup storylines; it never writes or publishes prose. During local development, visit `/api/editorial-brief` to inspect the current structured brief. That endpoint returns 404 in production.
+
 ## Deployment
 
 Deploy to Vercel as a standard Next.js app. Add the same environment variables in project settings, leave `DATA_SOURCE=mock` for the demo, or use `espn` for the live league. Never expose ESPN cookies or the Supabase service-role key to browser-visible variables. ESPN fetches use a ten-minute Next.js cache.

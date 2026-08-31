@@ -1,0 +1,2 @@
+import { z } from "zod";
+export const articleMetaSchema=z.object({title:z.string().min(1),slug:z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),season:z.coerce.number().int().min(2000).max(2100),week:z.coerce.number().int().min(0).max(30),publishedAt:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),summary:z.string().min(1),status:z.enum(["draft","published"]),heroLabel:z.string().min(1).optional(),author:z.string().min(1).optional(),featuredTeamIds:z.array(z.coerce.string()).optional(),tags:z.array(z.coerce.string()).optional()}).strict();
