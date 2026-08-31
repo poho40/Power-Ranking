@@ -1,2 +1,39 @@
-import type { League } from "@/lib/domain";import { calculateReplacementLevels } from "./replacementLevel";import { calculatePositionGroups } from "./positionGroups";import { generatePreseasonWeights } from "./weights";import { optimizeTeamLineup } from "./lineupOptimizer";import { valueOverReplacement } from "./playerValue";import { preseasonExplanation } from "./explanations";import { preseasonAwards } from "./awards";import type { BasePosition,PreseasonTeamRanking } from "./types";
-export function calculatePreseasonRankings(league:League){const replacementLevels=calculateReplacementLevels(league),groupRankings=calculatePositionGroups(league,replacementLevels),weights=generatePreseasonWeights(league),groups=Object.keys(weights) as (keyof typeof weights)[];const rows:PreseasonTeamRanking[]=league.teams.map(team=>{const positionGroups=Object.fromEntries(groups.flatMap(group=>{const row=groupRankings[group]?.find(r=>r.teamId===team.id);return row?[[group,row]]:[]})),lineup=optimizeTeamLineup(league,team.roster),totalStarterValue=lineup.assignments.reduce((s,a)=>s+Math.max(0,valueOverReplacement(a.player,replacementLevels.byPosition[a.player.position as BasePosition]??0)),0),skillValue=["RB","WR","TE","FLEX"].reduce((s,g)=>s+(positionGroups[g]?.rawValue??0),0),overallScore=groups.reduce((s,g)=>s+(positionGroups[g]?.score??50)*(weights[g]??0)/100,0);return{teamId:team.id,rank:0,overallScore:Number(overallScore.toFixed(1)),positionGroups,projectedLineup:lineup.assignments,bench:lineup.bench,totalStarterValue,skillValue,explanation:""}}).sort((a,b)=>b.overallScore-a.overallScore||b.totalStarterValue-a.totalStarterValue||b.skillValue-a.skillValue||(b.positionGroups.Bench?.score??0)-(a.positionGroups.Bench?.score??0)||league.teams.find(t=>t.id===a.teamId)!.name.localeCompare(league.teams.find(t=>t.id===b.teamId)!.name));const rankings=rows.map((r,i)=>{const base={...r,rank:i+1};return{...base,explanation:preseasonExplanation(base,league)}});return{rankings,groups,groupRankings,replacementLevels,weights,awards:preseasonAwards(rankings,groups,league)};}
+import type { League } from "@/lib/domain";
+import { normalizeMinMax } from "@/lib/rankings/normalization";
+import { FLEX_SLOTS } from "./config";
+import { benchMultiplier, orderedPlayers, playerContribution } from "./contributions";
+import { preseasonExplanation } from "./explanations";
+import { optimizeTeamLineup } from "./lineupOptimizer";
+import { calculatePositionGroups } from "./positionGroups";
+import { calculateReplacementLevels } from "./replacementLevel";
+import { preseasonAwards } from "./awards";
+import type { PreseasonTeamRanking } from "./types";
+import { generatePreseasonWeights } from "./weights";
+
+export function calculatePreseasonRankings(league: League) {
+  const replacementLevels = calculateReplacementLevels(league);
+  const groupRankings = calculatePositionGroups(league, replacementLevels);
+  const weights = generatePreseasonWeights(league); // Explanatory format context only; never used in Overall.
+  const groups = Object.keys(weights) as (keyof typeof weights)[];
+  const rawRows = league.teams.map((team) => {
+    const positionGroups = Object.fromEntries(groups.flatMap((group) => {
+      const row = groupRankings[group]?.find((candidate) => candidate.teamId === team.id);
+      return row ? [[group, row]] : [];
+    }));
+    const lineup = optimizeTeamLineup(league, team.roster, replacementLevels);
+    const starterContributions = lineup.assignments.map((assignment) => playerContribution(assignment.player, replacementLevels, FLEX_SLOTS.has(assignment.slot) ? "flex" : "starter", 1, assignment.slot));
+    const benchContributions = orderedPlayers(lineup.bench, replacementLevels).map((player, index) => playerContribution(player, replacementLevels, "depth", benchMultiplier(index)));
+    const totalStarterValue = starterContributions.reduce((sum, player) => sum + player.finalContribution, 0);
+    const totalBenchValue = benchContributions.reduce((sum, player) => sum + player.finalContribution, 0);
+    const overallRawValue = totalStarterValue + totalBenchValue;
+    return { teamId: team.id, positionGroups, projectedLineup: lineup.assignments, bench: lineup.bench, contributions: [...starterContributions, ...benchContributions], totalStarterValue, totalBenchValue, overallRawValue, skillValue: overallRawValue };
+  });
+  const overallScores = normalizeMinMax(rawRows.map((row) => row.overallRawValue));
+  const rows: PreseasonTeamRanking[] = rawRows.map((row, index) => ({ ...row, rank: 0, overallScore: Number(overallScores[index].toFixed(1)), explanation: "" }))
+    .sort((a, b) => b.overallRawValue - a.overallRawValue || b.totalStarterValue - a.totalStarterValue || b.totalBenchValue - a.totalBenchValue || league.teams.find((team) => team.id === a.teamId)!.name.localeCompare(league.teams.find((team) => team.id === b.teamId)!.name));
+  const rankings = rows.map((row, index) => {
+    const ranked = { ...row, rank: index + 1 };
+    return { ...ranked, explanation: preseasonExplanation(ranked, league) };
+  });
+  return { rankings, groups, groupRankings, replacementLevels, weights, awards: preseasonAwards(rankings, groups, league) };
+}

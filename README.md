@@ -70,7 +70,7 @@ Preseason rankings are independent from wins and weekly performance. The engine:
 - values players by projected points above replacement;
 - combines top-end starter value with diminishing useful-depth value;
 - scores FLEX only from players assigned to FLEX-like slots in the unique optimized lineup;
-- normalizes each applicable group to 0–100 and combines group scores with league-aware weights totaling 100%.
+- normalizes each applicable group to 0–100 for explanation, while Overall independently normalizes full usable VOR from unique optimized starters plus discounted useful bench VOR.
 
 Kicker and defense groups disappear automatically in leagues that do not use them. Multiple FLEX, 2-QB, SUPERFLEX, and hybrid ESPN eligibility are supported.
 

@@ -1239,10 +1239,10 @@ Preseason rankings are a permanent roster-quality baseline and remain independen
 - [x] Score FLEX from optimized FLEX assignments without reusing required-position starters.
 - [x] Apply diminishing returns to useful positive-value reserves rather than rewarding roster quantity.
 
-## Task P5 — Dynamic Overall Weights and Rankings
+## Task P5 — Partitioned VOR and Overall Rankings
 
-- [x] Generate league-aware weights that adapt to starter counts, multiple FLEX, SUPERFLEX, and omitted K/D/ST slots.
-- [x] Guarantee effective weights total 100% and combine normalized strength scores rather than ordinal ranks.
+- [x] Retain league-aware positional shares as explanatory format context only; they do not affect Overall.
+- [x] Calculate Overall raw roster value from each unique optimized starter's full usable VOR plus discounted useful bench VOR, then normalize Overall independently across the league.
 - [x] Apply deterministic group and overall tie breakers and generate metric-derived explanations.
 
 ## Task P6 — Preseason Awards and History Architecture
@@ -1255,13 +1255,23 @@ Preseason rankings are a permanent roster-quality baseline and remain independen
 - [x] Add `/preseason` as a major responsive navigation destination with the overall board, applicable positional rankings, player contributions, starter/depth metrics, awards, and methodology access.
 - [x] Make preseason rankings the primary homepage experience until a matchup is completed, then retain a prominent preseason link.
 - [x] Add preseason rank, score, positional profile, explanation, and optimized starting lineup to every team page.
-- [x] Extend methodology with projection, replacement, optimizer, FLEX, depth, normalization, and live effective-weight explanations.
+- [x] Extend methodology with the exact full-season projection, replacement, raw/usable VOR, optimizer, FLEX partition, depth curves, normalization, and independent Overall calculation.
 
 ## Task P8 — Preseason Validation
 
 - [x] Add tests for player VOR, missing/identical projections, standard/FLEX/multi-FLEX/SUPERFLEX lineups, multiple eligibility, uniqueness, dynamic replacement, adaptive weights, missing K/D/ST, diminishing bench returns, tie breakers, determinism, finite scores, and awards.
 - [x] Validate all teams and every applicable group against the configured live ESPN league.
 - [x] Verify responsive overflow handling, loading/error/empty states, cache behavior, and server-only ESPN credentials.
+
+### Exact preseason VOR formula
+
+- Player raw VOR is `seasonProjectedPoints - replacementLevelProjectedPoints[position]`; usable VOR is `max(0, raw VOR)`. Raw negative values remain available for diagnosis but never improve a score.
+- Replacement is the next player beyond league-wide expected starting demand at that position. Demand starts with `team count × required slots` and adds the positions selected by optimized FLEX/SUPERFLEX assignments.
+- Required non-FLEX slots are optimized first by usable VOR. FLEX-like slots are then optimized from the remaining eligible players. A player can occupy only one assignment.
+- Positional raw strength gives required starters 100% of usable VOR. Unassigned same-position depth receives 50%, 25%, 12.5%, 6.25%, then continues halving. FLEX starters are excluded from base-position contribution and receive 100% only in FLEX.
+- Bench raw strength includes only unassigned useful reserves, ordered by usable VOR, at 50%, 35%, 25%, 15%, 10%, then 5% each. Below-replacement reserves contribute zero.
+- Positional raw totals are min–max normalized to 0–100; equal totals become 50. Ties use top starter usable VOR, total starter usable VOR, first depth usable VOR, total useful depth VOR, then team name.
+- Overall raw roster value is the sum of full usable VOR for every unique optimized starter plus discounted bench contributions. Overall is independently min–max normalized to 0–100 and does not combine positional/FLEX/Bench scores, preventing category double counting.
 
 ---
 
@@ -2018,7 +2028,7 @@ npm audit          PASS (0 vulnerabilities after Next.js 16 upgrade)
 - [x] Confirmed the league-configured slots: QB 1, RB 2, WR 2, TE 1, FLEX 1, D/ST 1, K 1, bench 7, and IR 1. Active roster entries map to the configured starter and bench slots.
 - [x] Updated ESPN stat parsing to expose separate season/weekly actual/projected fields selected by season, scoring period, stat source, and split type. Preseason value uses the full-season `appliedTotal`; ESPN `ratings.totalRating`, weekly projections, and season averages are not preseason inputs.
 - [x] Matchups are complete only when ESPN returns `HOME`, `AWAY`, or `TIE`; `UNDECIDED` current and future matchups remain incomplete.
-- [x] Generated 10 unique real-league preseason rankings with sequential ranks, finite normalized components, no NaN/Infinity values, no missing teams, and a 21.7–50.4 full-season roster-score range.
+- [x] Generated 10 unique real-league preseason rankings with sequential ranks, finite normalized components, no NaN/Infinity values, no missing teams, and an independently normalized 0–100 full-season roster-score range.
 - [x] Verified HTTP 200 rendering with live data for `/`, `/rankings`, `/standings`, `/matchups`, `/teams`, and `/teams/1`.
 - [x] Verified the ESPN cookie values do not occur in generated client assets and `.env.local` is explicitly ignored.
 - [x] Added live-response regression tests for response validation, projections, configured slots, and matchup completion.
@@ -2038,20 +2048,24 @@ npm run build      PASS (live ESPN mode, 10-minute revalidation)
 
 - Live ESPN roster: 10 teams, 160 players, 160 full-season projections, and 160 current-week projections parsed successfully as separate fields.
 - Applicable live groups: QB, RB, WR, TE, FLEX, Bench, K, and D/ST; every group contains 10 unique teams.
-- Live effective weights: QB 15%, RB 25%, WR 25%, TE 12%, FLEX 13%, Bench 5%, K 2%, D/ST 3%; total 100%.
+- Explanatory format shares remain QB 15%, RB 25%, WR 25%, TE 12%, FLEX 13%, Bench 5%, K 2%, D/ST 3%; they no longer feed Overall scoring.
 - Every optimized lineup contains unique players and respects the configured 1 QB, 2 RB, 2 WR, 1 TE, 1 FLEX, 1 K, and 1 D/ST starters.
 - All overall, group, starter, depth, full-season player-value, and replacement-level numbers are finite. Live full-season samples were verified at QB, RB, WR, and TE; changing weekly projections is regression-tested not to alter preseason rankings.
 - `/`, `/preseason`, `/methodology`, and `/teams/1` render HTTP 200 with live preseason data.
 - Desktop tables use contained horizontal scrolling; position sections collapse to a two-column mobile card layout.
-- Full-season projection correction validation: 41 tests pass; lint, strict type checking, and the live-data production build pass. Live rankings contain 10 unique teams with sequential ranks, legal unique-player lineups, finite values, and a 21.7–50.4 score range.
+- VOR methodology validation: live replacement projections are QB 291.29, RB 202.86, WR 204.35, TE 177.05, K 142.20, and D/ST 100.29. All 10 rankings and every positional group contain each team exactly once; lineups and Overall contribution ledgers contain no duplicate players; every score is finite.
+- Real trace: Alls fair in Olave and Warren's RB room uses Christian McCaffrey (342.80 projection − 202.86 replacement = 139.93 VOR × 100%) plus Chase Brown (272.08 − 202.86 = 69.22 × 100%) for 209.15 raw RB strength, normalized to 77.97 and ranked second. Its Overall raw 453.12 equals 452.17 unique-starter usable VOR plus 0.95 discounted bench VOR and normalizes to 100.
+- Final exact-methodology validation: 54 tests pass; lint, strict type checking, the live-data production build, and `git diff --check` pass.
 
 ## News Feature Validation (2026-08-30)
 
 - Repository-backed Markdown loader validates strict frontmatter and safe slugs without requiring ESPN or a database.
+- News metadata supports true preseason articles with no fabricated week; article headers render a preseason label when `week` is absent.
 - Public content includes only `published` articles; the included Week 1 report remains a manual-review draft.
+- Added the real-data **Post-Draft Analysis** covering all 10 teams, full-season projections, optimized lineups, positional ranks, value over replacement, and depth. Its published analysis was refreshed after the exact VOR methodology changed the preseason order.
 - Production checks: `/news` returns 200, the draft article route returns 404, and `/api/editorial-brief` returns 404.
 - Published article ordering and lookup are verified with deterministic test fixtures.
 - Editorial candidates use power ranking, movement, scoring, expected wins, luck, recent form, record, and scheduled matchup data; no team names are hardcoded.
 - The homepage reads only the latest published article and hides the section when none exists.
 - The production build succeeds with ESPN configuration deliberately unavailable, so static news content remains deployable during an ESPN outage.
-- Final validation: 38 tests pass; lint, strict type checking, and the production build pass.
+- Final validation: 43 tests pass; lint, strict type checking, and the production build pass.
