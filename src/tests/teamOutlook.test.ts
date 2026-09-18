@@ -17,7 +17,7 @@ describe("team outlook", () => {
     expect(article.generatedContent.rankings).toHaveLength(league.teams.length);
     for (const row of article.generatedContent.rankings) {
       expect(Object.values(row.outlook!).every(text => text.length > 100)).toBe(true);
-      expect(row.outlook!.whyLow).toContain("one-week sample");
+      expect(row.outlook!.whyLow).toContain("only Week 1");
       expect(JSON.stringify(row.outlook)).not.toMatch(/NaN|Infinity/);
     }
     expect(snapshot).toEqual(original);
@@ -27,36 +27,37 @@ describe("team outlook", () => {
   it("distinguishes strong scoring with bad luck from weak scoring with favorable luck", () => {
     const base = snapshot.result[0], team = league.teams.find(team => team.id === base.teamId)!;
     const strong = teamOutlook(snapshot, team, { ...base, pointsPerGame: 200, expectedWinPct: 0.9, luck: -0.75, components: { ...base.components, roster: 80 } });
-    expect(strong.whyHigh).toContain("200.0 points per game");
-    expect(strong.whyHigh).toContain("90.0% all-play");
-    expect(strong.couldGoRight).toContain("less punishing opponent draws");
+    expect(strong.whyHigh).toContain("somebody else's schedule");
+    expect(strong.whyHigh).not.toMatch(/\d|all-play|component/);
+    expect(strong.couldGoRight).toContain("less brutal draw");
     const weak = teamOutlook(snapshot, team, { ...base, pointsPerGame: 10, expectedWinPct: 0.1, luck: 0.75, components: { ...base.components, roster: 20 } });
-    expect(weak.whyHigh).toContain("recovery case");
-    expect(weak.whyLow).toContain("10.0%");
-    expect(weak.couldGoWrong).toContain("+0.75-win gap");
-    expect(weak.couldGoRight).toContain("close the");
+    expect(weak.whyHigh).toContain("room to change the story");
+    expect(weak.whyLow).toContain("matchups have been kind");
+    expect(weak.couldGoWrong).toContain("friendly matchups disappear");
+    expect(weak.couldGoRight).toContain("make the next team");
   });
 
   it("does not count future matchups toward the sample", () => {
     const row = snapshot.result[0], team = league.teams.find(team => team.id === row.teamId)!;
     const outlook = teamOutlook({ ...snapshot, league: { ...league, matchups: mockLeague.matchups.map(game => ({ ...game, completed: true })) } }, team, row);
-    expect(outlook.whyLow).toContain("one-week sample");
+    expect(outlook.whyLow).toContain("only Week 1");
   });
 });
 
 describe("existing article expansion", () => {
   const generated = { ...generateWeeklyRankingArticle(snapshot), id: 1 };
-  const old = { ...generated, generatedContent: { ...generated.generatedContent, rankings: generated.generatedContent.rankings.map(row => ({ ...row, outlook: undefined })) } };
+  const old = { ...generated, generatedContent: { ...generated.generatedContent, editorialVersion: undefined, rankings: generated.generatedContent.rankings.map(row => ({ ...row, outlook: undefined })) } };
 
   it("expands Week 1 without changing the saved article or recalculating rankings", async () => {
     const original = structuredClone(old);
     const byWeek = vi.fn().mockResolvedValue(snapshot);
-    const expanded = await expandArticle(old, { byWeek } as unknown as SnapshotStore, league.id);
+    const expanded = await expandArticle(old, { byWeek, all: vi.fn().mockResolvedValue([]) } as unknown as SnapshotStore, league.id);
     expect(byWeek).toHaveBeenCalledWith(league.id, league.season, 1, "regular");
     expect(expanded.generatedContent.rankings.every(row => row.outlook)).toBe(true);
     expect(expanded.slug).toBe(old.slug);
     expect(expanded.publishedAt).toBe(old.publishedAt);
-    expect(expanded.generatedContent.rankings[0].explanation).toBe(old.generatedContent.rankings[0].explanation);
+    expect(expanded.generatedContent.editorialVersion).toBe(2);
+    expect(expanded.generatedContent.rankings.map(row => [row.teamId,row.rank,row.powerScore])).toEqual(old.generatedContent.rankings.map(row => [row.teamId,row.rank,row.powerScore]));
     expect(old).toEqual(original);
   });
 

@@ -1,40 +1,39 @@
 import type { PowerRanking, Team } from "@/lib/domain";
 import type { PublishedSnapshot } from "@/lib/supabase/types";
 
-const number = (value: number) => Number.isFinite(value) ? value : 0;
-
 export function teamOutlook(snapshot: PublishedSnapshot<PowerRanking[]>, team: Team, ranking: PowerRanking) {
-  const rows = snapshot.result;
-  const average = rows.reduce((sum, row) => sum + number(row.pointsPerGame), 0) / rows.length;
-  const ppg = number(ranking.pointsPerGame), difference = ppg - average;
-  const allPlay = number(ranking.expectedWinPct) * 100;
-  const roster = number(ranking.components.roster), luck = number(ranking.luck);
-  const games = snapshot.league.matchups.filter(game => game.completed && game.week <= snapshot.week && (game.homeTeamId === team.id || game.awayTeamId === team.id));
-  const sample = new Set(games.map(game => game.week)).size;
-  const scoring = `${ppg.toFixed(1)} points per game, ${Math.abs(difference).toFixed(1)} ${difference >= 0 ? "above" : "below"} the league average of ${average.toFixed(1)}`;
-  const high: string[] = [], low: string[] = [];
-
-  if (difference >= 0) high.push(`The strongest argument for ${team.name} starts with production: ${scoring}. Scoring above the league's typical output gives this team a path to wins that does not depend solely on drawing a weak opponent.`);
-  else low.push(`The offense is producing ${scoring}. That gap is the central concern: a favorable matchup can hide it in the standings, but it leaves less margin against stronger opponents.`);
-  if (allPlay >= 50) high.push(`The ${allPlay.toFixed(1)}% all-play win rate means these scores would beat at least half the league across the recorded weekly comparisons, with ties counting as half a win. That supports the ranking beyond the actual schedule.`);
-  else low.push(`An all-play win rate of ${allPlay.toFixed(1)}% means the recorded scores lose more league-wide comparisons than they win. The case for a climb needs better weekly output, not just a different opponent.`);
-  if (roster >= 65) high.push(`A roster component of ${roster.toFixed(1)}/100 is another encouraging signal within this league. It gives us a reason to watch for more than the results already in the books, although that score is not a forecast of next week's points.`);
-  else if (roster <= 35) low.push(`The roster component sits at ${roster.toFixed(1)}/100 relative to this league. The model offers limited roster-based support for a rebound; a higher ceiling still needs to show up in actual scoring.`);
-  if (luck <= -0.25) high.push(`Matchup luck is ${luck.toFixed(2)} wins: actual results trail the all-play expectation. That makes the record a harsher verdict than the scoring comparisons, though it does not guarantee future wins.`);
-  else if (luck >= 0.25) low.push(`Matchup luck is +${luck.toFixed(2)} wins, meaning the record has outperformed the all-play expectation. If opponent draws become less favorable, the same scoring could produce worse results.`);
-  if (!high.length) high.push(`The optimistic case for ${team.name} is a recovery case, rather than a claim that the current results are strong. A roster component of ${roster.toFixed(1)}/100 and a scoring gap of ${Math.abs(difference).toFixed(1)} points per game show what needs to translate into better weeks; a move toward the league's ${average.toFixed(1)}-point average would be a concrete first step.`);
-  if (!low.length) low.push(`The concern is how much of this level ${team.name} can sustain. A ${ppg.toFixed(1)}-point scoring average and ${allPlay.toFixed(1)}% all-play rate set a demanding standard; a drop toward the league's ${average.toFixed(1)}-point average would weaken the case for this position.`);
-  low.push(sample <= 1
-    ? "This is only a one-week sample. Scoring and recent form largely describe the same performance here, so they are not two independent pieces of evidence for a lasting trend."
-    : `The evidence covers ${sample} completed weeks. Recent form is ${number(ranking.components.recentForm).toFixed(1)}/100 within the league, but a short run can still exaggerate both progress and decline.`);
-
-  const right = difference < 0
-    ? `If ${team.name} can close the ${Math.abs(difference).toFixed(1)}-point gap to the league average, stronger weekly scores would improve both the scoring and all-play case for moving up. ${roster >= 65 ? "The relatively strong roster score makes that a plausible scenario to watch, rather than something already proven." : "The first sign to look for is a better league-wide scoring finish, even if the next head-to-head result is unlucky."}`
-    : `If ${team.name} keeps scoring around ${ppg.toFixed(1)} points while the league stays near ${average.toFixed(1)}, the offense can keep generating favorable all-play comparisons. ${luck < -0.25 ? "With less punishing opponent draws, that performance could turn into a better record without requiring a major scoring leap." : "Repeating that performance over more weeks would make the current ranking more convincing and strengthen the case to hold or improve it."}`;
-  const wrong = luck >= 0.25
-    ? `If the schedule stops helping, the +${luck.toFixed(2)}-win gap over all-play expectation could shrink. That is a scenario, not a prediction: the danger is that the record slips before the underlying ${ppg.toFixed(1)}-point average improves enough to compensate.`
-    : difference < 0
-      ? `If the offense remains below the ${average.toFixed(1)}-point league average, tougher opponent scores could turn the current weakness into more losses. A single bounce-back result would not resolve that concern unless the league-wide scoring comparisons improve too.`
-      : `If scoring falls toward the league average, opponents would have more chances to beat this team and its all-play profile would soften. ${roster <= 35 ? "The low relative roster score adds to that concern: there is not much model support for assuming the scoring edge will automatically return." : "The warning sign would be repeated ordinary scoring weeks, even if a few favorable matchups keep the record looking healthy."}`;
-  return { whyHigh: high.join(" "), whyLow: low.join(" "), couldGoRight: right, couldGoWrong: wrong };
+  const average = snapshot.result.reduce((sum, row) => sum + row.pointsPerGame, 0) / snapshot.result.length;
+  const strong = ranking.pointsPerGame >= average;
+  const convincing = ranking.expectedWinPct >= 0.65;
+  const roster = ranking.components.roster;
+  const unlucky = ranking.luck <= -0.25, fortunate = ranking.luck >= 0.25;
+  const early = new Set(snapshot.league.matchups.filter(game => game.completed && game.week <= snapshot.week && (game.homeTeamId === team.id || game.awayTeamId === team.id)).map(game => game.week)).size <= 1;
+  const high = convincing
+    ? `We like ${team.name} because the scoring gives the rest of the league something to worry about. This is the kind of team you would rather see on somebody else's schedule. ${unlucky ? "The results have been a little unfair, too. We would be much more worried about facing this team than its record might suggest." : "There is a good case for taking them seriously even if you ignore the standings entirely."}`
+    : strong
+      ? `${team.name} has done enough to keep us interested. We are not ready to hand out a trophy, but there is something to work with here: they can put up a score that makes an opponent earn the win. ${roster >= 65 ? "We like the roster enough to believe there could be another gear." : "For now, that is a better reason for optimism than simply hoping the next opponent has a bad week."}`
+      : roster >= 65
+        ? `We are not ready to give up on ${team.name}. The results have been disappointing, but we like the roster more than the scoring so far. This feels like a team that could make a gloomy early verdict look silly if things start coming together. We want to see it happen before buying all the way in.`
+        : `The best case for ${team.name} is that there is still room to change the story. We would rather leave the door open for a response than write the season off here. That is cautious optimism, though: we need to see a performance that makes the rest of the league pay attention.`;
+  let low = fortunate
+    ? `We are less sold than the record might suggest. The matchups have been kind, and that can make a team look more comfortable than it really is. ${strong ? "There is good scoring here, so this is not a dismissal. We just would not assume every close call will keep breaking their way." : "Our worry is what happens when an opponent shows up with a decent week. There has not been enough scoring to make that feel like a comfortable assignment."}`
+    : !strong
+      ? `It is hard to feel comfortable backing a team that keeps giving its opponent room to breathe. ${roster >= 65 ? "We can talk ourselves into the roster, but potential only buys so much patience. At some point, the good version of this team has to show up." : "We need a reason to expect more than a favorable matchup. Right now, the scoring leaves us asking where the next convincing win comes from."}`
+      : roster <= 35
+        ? `We like what has hit the scoreboard more than we like the cushion behind it. If the scoring cools off, we are not convinced this roster will make the dip painless. That keeps us from treating a good start as a settled verdict.`
+        : `The question is whether this is the version of ${team.name} we should expect most weeks. It is easy to fall in love with a team when the scoreboard looks good. We want to know what an ordinary week looks like before we stop worrying.`;
+  if (early) low += " It is only Week 1. We can have a take without pretending we have the whole season figured out.";
+  const right = unlucky
+    ? `The good version of this story does not require a complete reinvention. Keep giving opponents a difficult score to chase and get a less brutal draw, and the results could start looking a lot more flattering. We would not be surprised if the conversation around this team changed before much else did.`
+    : !strong
+      ? roster >= 65
+        ? `The roster starts delivering the kind of weeks we think it is capable of, and suddenly this looks like a slow start rather than a bad team. A convincing bounce-back would go a long way toward getting us back on board. We would much rather see that than an ugly win that answers nothing.`
+        : `They put together a week that is good enough to beat a strong opponent, not just survive a quiet one. That would give us something real to get behind. The climb does not have to happen all at once; first, make the next team on the schedule a little nervous.`
+      : `They back this up, and we stop treating a good performance like something that needs explaining away. ${ranking.rank <= 3 ? "The upside is becoming the team everyone measures themselves against." : "There is room to make the teams above them uncomfortable."} The more often they force opponents to chase, the easier it gets to believe.`;
+  const wrong = fortunate
+    ? `The friendly matchups disappear before the scoring takes a step forward. Then the same kind of performance that was enough to get by starts ending in losses, and the standings catch up in a hurry. We would be watching the quality of the weeks, not just whether they sneak out another win.`
+    : !strong
+      ? `The rebound keeps being something we talk about instead of something that actually happens. Another quiet week would make it harder to stay patient, especially if the rest of the league starts pulling away. We do not need perfection, but we do need a reason to believe the next outing will be different.`
+      : `A couple of ordinary weeks take the shine off, and suddenly this team looks much more beatable. ${roster <= 35 ? "That is the version that worries us: the scoring edge fades and there is not an obvious reason to expect an immediate recovery." : "One off week would not change our minds. A run of them would make us reconsider how much confidence this spot deserves."}`;
+  return { whyHigh: high, whyLow: low, couldGoRight: right, couldGoWrong: wrong };
 }
