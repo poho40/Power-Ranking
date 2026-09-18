@@ -130,19 +130,18 @@ Deploy to Vercel as a standard Next.js app. Add the same environment variables i
 
 This project is independent and is not affiliated with or endorsed by ESPN.
 
-## Automatic Tuesday publication
+## Automatic Tuesday rankings and Wednesday news
 
-No manual action is required each Tuesday. The workflow is:
+Rankings run Tuesday at 17:00 UTC and news runs Wednesday at 17:00 UTC (10 a.m. Pacific during daylight saving time, 9 a.m. during standard time). Both endpoints use `CRON_SECRET`. Deploy the updated `vercel.json` to production to activate the schedules. The workflow is:
 
 ```text
-Vercel Cron → ESPN → ranking calculation → immutable Supabase snapshot
-            → snapshot-backed article generation → immutable Supabase article
-            → /rankings, /news, and the homepage update
+Tuesday /api/cron/publish-rankings → ESPN → immutable Supabase rankings
+Wednesday /api/cron/publish-news → saved rankings → immutable Supabase article
 ```
 
-Generated `weekly_power_rankings` articles use only the exact saved snapshot, are stored as structured JSON in `news_articles`, and coexist with manual Markdown articles in `content/news/`. If both snapshot and article exist, a retry returns `already_published`. If only the snapshot exists, the retry creates the missing article and returns `article_repaired` without recalculating or changing the snapshot.
+Generated `weekly_power_rankings` articles use only the exact saved snapshot, are stored as structured JSON in `news_articles`, and coexist with manual Markdown articles in `content/news/`. The Wednesday job uses the latest regular-season snapshot for the configured league and season, without fetching ESPN or recalculating rankings. It returns `already_published` if the article exists and `no-published-snapshot` if no regular-season snapshot exists. If article generation or storage fails, retry `/api/cron/publish-news` using Vercel’s Run button; the saved rankings stay unchanged. Tuesday’s job and `npm run publish:latest` now publish rankings only.
 
-Inspect `ranking_snapshots` and `news_articles` in the Supabase Table Editor, joining on `snapshot_id`. Vercel Function logs for `/api/cron/publish-rankings` report only the status, week, snapshot ID, and article slug.
+Inspect `ranking_snapshots` and `news_articles` in the Supabase Table Editor, joining on `snapshot_id`. Vercel Function logs for `/api/cron/publish-news` report the status and, when available, week, snapshot ID, and article slug.
 
 ## ESPN Authentication Maintenance
 

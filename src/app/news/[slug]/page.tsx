@@ -1,4 +1,5 @@
 import type { Metadata } from "next";import Link from "next/link";import { notFound } from "next/navigation";import ReactMarkdown from "react-markdown";import { getArticleBySlug,loadNewsArticles,type GeneratedNewsArticle } from "@/lib/news";import { GeneratedWeeklyArticle } from "@/components/news/GeneratedWeeklyArticle";
+export const dynamic = "force-dynamic";
 export const dynamicParams=true;
 export function generateStaticParams(){return loadNewsArticles().filter(article=>process.env.NODE_ENV!=="production"||article.status==="published").map(article=>({slug:article.slug}))}
 export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{const {slug}=await params,article=await getArticleBySlug(slug,{includeDrafts:process.env.NODE_ENV!=="production"});if(!article)return{title:"Article Not Found"};return{title:article.title,description:article.summary,alternates:{canonical:`/news/${article.slug}`},openGraph:{type:"article",title:article.title,description:article.summary,publishedTime:`${article.publishedAt}T00:00:00Z`,url:`/news/${article.slug}`,tags:article.tags}}}
