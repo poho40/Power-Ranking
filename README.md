@@ -156,3 +156,7 @@ If the status changes to **Authentication Required**:
 5. If Tuesday was missed, run `npm run publish:latest` to use the same fail-safe pipeline immediately.
 
 Both commands use `PUBLISH_BASE_URL` and `CRON_SECRET`. The connectivity check never publishes. Authentication, network, malformed-response, or partial-data failures abort before snapshot/article writes and preserve the prior release.
+
+### Expanded team outlooks
+
+Weekly reports include reasons for optimism, concerns, and conditional upside/downside scenarios for every team, using only that article’s saved rankings snapshot. Week 1 explicitly treats scoring and recent form as a single week of evidence. Future news cron runs save these sections with the article. Older immutable articles (including Week 1) gain the sections when viewed, using their exact linked snapshot; their saved prose, ranking values, and publication dates are preserved. Deploy the updated generator, reader, and article component to enable this presentation. No database migration or republishing is needed.
